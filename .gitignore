@@ -1,0 +1,26 @@
+# STM32CubeIDE / Eclipse Specific
+.metadata/
+.settings/
+.launch
+
+# Build Outputs
+Debug/
+Release/
+debug/
+release/
+
+# Compiled Files
+*.o
+*.elf
+*.hex
+*.bin
+*.map
+*.d
+*.ilk
+*.exp
+
+# Temp/Backup Files
+*.bak
+*.swp
+*~
+*.tmp   
