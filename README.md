@@ -7,10 +7,19 @@ The game features a RESET function, WIN and LOSS logic and VARIABLE DIFFICULTY u
 
 
 1-Any Number of LEDs
+
+
 2-Any Number of Buttons
+
+
 3-A Potentiometer for variable difficulty.
+
+
 4-MTM or MTF Wires
+
+
 5-Breadboard
+
 
 **Working Principle, A breakdown of the Code**
 
