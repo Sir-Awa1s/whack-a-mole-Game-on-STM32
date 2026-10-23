@@ -49,8 +49,8 @@ ADC_HandleTypeDef hadc1;
 
 struct buttons{
 
-	GPIO_TypeDef *port;
-		uint16_t pin;
+	GPIO_TypeDef *port; // DEFINE PORT (GPIOA,GPIOB ETC)
+		uint16_t pin; // DEFINE PIN(8,9,15 ETC)
 
 		uint32_t prevDebounceTime_ms;
 		GPIO_PinState currentState;   // latest raw reading
@@ -58,24 +58,23 @@ struct buttons{
 };
 
 struct LED{
-	GPIO_TypeDef *port[2];
-		uint16_t pin[5];
+	GPIO_TypeDef *port[2]; // DEFINE PORT (GPIOA,GPIOB ETC)
+		uint16_t pin[5]; // DEFINE PIN(8,9,15 ETC)
 
 		uint32_t prevTimeStamp_ms;
 		uint32_t interval;
 };
 
 struct GAMELOGIC{
-	uint32_t interval;
-	uint32_t prevTimeStamp_ms;
-	GPIO_PinState state;
-	bool pressed;
+	uint32_t interval; // INTERVAL OF LED BEING ON/FF
+	uint32_t prevTimeStamp_ms; // PREVIOUS TIME RECORDED IN MS (USUALLY RECORDED AFTER EVERY SPECIFIED INTERVAL HAS PASSED)
+	GPIO_PinState state; // STATE OF LED (ON/OFF)
+	bool pressed; // BOOL TO CHECK DEFINE IF USER PRESSED BUTTON OR NOT
 	uint8_t win;
 	uint8_t loss;
-	uint8_t count;
+	uint8_t count; // COUNT NUMBER OF LEDS ON
 
-	uint8_t Randomizer[3];
-	bool lit[5];
+	bool lit[5]; // ARRAY TO STORE WHAT LED WILL BE ON/OFF
 };
 
 /* USER CODE END PV */
@@ -85,7 +84,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
-void gameLogic(struct buttons *btn,struct GAMELOGIC *lgc,struct LED *led,uint32_t TimeStamp_ms);
+void gameLogic(struct buttons *btn,struct GAMELOGIC *lgc,struct LED *led,uint32_t TimeStamp_ms); // MAIN LOGIC
 GPIO_PinState debounce(struct buttons *btn);
 bool checkButton(struct buttons *btn);
 int startingFlicker(struct LED *led);
@@ -139,12 +138,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   int gameState = 0;
 
+  // INITIALIZE STRUCTS
   struct buttons Buttons[NUM_LEDS];
   struct LED led;
   struct GAMELOGIC lgc;
 
+  // CALL FUNCTIONS TO DEFINE STRUCT ELEMENTS
   defineLOGIC(&lgc);
-  //defineButton(&Buttons);
   defineLED(&led);
 
   defineButton(&Buttons[0], GPIOA, GPIO_PIN_8);
@@ -160,39 +160,39 @@ int main(void)
   while (1)
   {
 
-	  if(gameState == 0){
+	  if(gameState == 0){ // IF GAME IS IN MENU PHASE
 
-		  startingFlicker(&led);
+		  startingFlicker(&led); // MENU FLICKERING
 
 		  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_9) == GPIO_PIN_SET){ // Check if user pressed start button
 			  HAL_Delay(20);
-			  	  gameState = 1;
+			  	  gameState = 1; // CHANGE GAMESTATE TO PLAY (1)
 	  	  }
 
 	  }
 
-	  if(gameState == 1){
+	  if(gameState == 1){ // GAME IS IN PLAY
 
 
 		  uint32_t TimeStamp_ms = HAL_GetTick(); // GET CURRENT TIME IN MS (NON BLOCKING)
 
-			  gameLogic(Buttons,&lgc,&led,TimeStamp_ms);
+			  gameLogic(Buttons,&lgc,&led,TimeStamp_ms); // CALL FUNCTION OF MAIN LOGIC
 
 
-			if (lgc.loss > 2) {
+			if (lgc.loss > 5) { // IF X NUMBER OF LOSSES > WIN, CHANGE GAMESTATE TO LOSS (5)
 				gameState = 2;
 			}
 
-			if (lgc.win > 30) {
+			if (lgc.win > 10) { // IF X NUMBER OF WINS > LOSS, CHANGE GAMESTATE TO WIN (3)
 				gameState = 3;
 			}
 	  }
 
-	  if(gameState == 2){
+	  if(gameState == 2){ // IF LOSS - PUT LOSS LED ANIMATION
 		  lossAnim(&led);
-		  if(resetGame(Buttons) == true){
-			  RESET_L(&lgc,Buttons,&led);
-			  gameState = 0;
+		  if(resetGame(Buttons) == true){ // CHECK IF USER INPUTS A RESET
+			  RESET_L(&lgc,Buttons,&led); // RESET ALL VALUES
+			  gameState = 0; // BRING GAME BACK TO MENU
 		  }
 	  }
 
@@ -363,56 +363,56 @@ void gameLogic(struct buttons *btn,struct GAMELOGIC *lgc,struct LED *led,uint32_
 
 	uint8_t size = sizeof(lgc->lit)/sizeof(lgc->lit[0]);
 
-	for(uint8_t i = 0;i < size;i++){
-	if(checkButton(&btn[i]) && lgc->lit[i] == true){
-		HAL_GPIO_WritePin(GPIOB,led->pin[i], GPIO_PIN_RESET);
-		lgc->lit[i] = false;
-		lgc->count--;
+	for(uint8_t i = 0;i < size;i++){ // INTERATE THROUGH ALL BUTTONS
+	if(checkButton(&btn[i]) && lgc->lit[i] == true){ // CHECK IF BUTTON IS PRESSED AND AN LED IS ON
+		HAL_GPIO_WritePin(GPIOB,led->pin[i], GPIO_PIN_RESET); // TURN OFF THAT LED
+		lgc->lit[i] = false; // MAKE LED BOOL FALSE
+		lgc->count--; // DECREMENT THE NUMBER OF LED'S ON
 		}
 	}
 
-	if(TimeStamp_ms - lgc->prevTimeStamp_ms >= lgc->interval){
-		lgc->prevTimeStamp_ms = TimeStamp_ms;
+	if(TimeStamp_ms - lgc->prevTimeStamp_ms >= lgc->interval){ // IF THE TOTAL TIME PASSED IS GREATER THAN THE INTERVAL DEFINED
+		lgc->prevTimeStamp_ms = TimeStamp_ms; // MARK THE NEW  (previous)TIMESTAMP BASED ON THE CURRENT TIMESTAMP
 
-		uint16_t pot = readPot();
+		uint16_t pot = readPot(); // CALL FUNCTION TO INTIALIZE AND READ THE POTIENTOMETER
 		uint32_t onTime  = scaleTime(pot, 2000, 700);   // LEDs lit: 2 s (easy) to 0.5 s (hard)
 		uint32_t offTime = scaleTime(pot, 1000, 350);
 
-		if(lgc->state){
+		if(lgc->state){ // IF STATE OF LED IS ON
 
-			if (lgc->count == 0) {
+			if (lgc->count == 0) { // IF NO LEDS ARE ON
 						lgc->win += 1;
-					} else {
+					} else { // IF AN LED WAS REMAINING, TURN IT OFF
 						lgc->loss += 1;
 					}
 
-			lgc->pressed = false;
-			lgc->count = 0;
+			lgc->pressed = false; // RESET BUTTON PRESS COUNTER BACK TO FALSE
+			lgc->count = 0; // RESET NUMBER OF LED'S ON TO 0
 
-			for(uint8_t i =0;i < size;i++){
+			for(uint8_t i =0;i < size;i++){ // ITERATE THROUGH EACH LED AND TURN IT OFF
 				lgc->lit[i] = false;
 				HAL_GPIO_WritePin(GPIOB,led->pin[i],lgc->lit[i]);
 					}
-			lgc->state = 0;
-			lgc->interval = offTime; //NOT DEFINED YET, WILL BE DEFINED BY DIFFICULTY RATING THING
+			lgc->state = 0; // RESET CURRENT STATE OF ROUND
+			lgc->interval = offTime; //DEFINE THE INTERVAL BASED OFF OF THE OFFTIME FROM THE POTIENTOMETER
 
-		}else{
+		}else{ // IF LED IS OFF
 
-			for(uint8_t i = 0; i <size; i++){
-				unsigned int flip = (RNG() % 2);
+			for(uint8_t i = 0; i <size; i++){ // ITERATE FOR EVERY LED
+				unsigned int flip = (RNG() % 2); // COINFLIP TO DECIDE WHICH LED WILL BE ON AND WHICH  WILL BE OFF
 
-				if(flip == 0){
+				if(flip == 0){ // IF 0, LED WILL REMAIN OFF
 					lgc->lit[i] = false;
-				}else{
+				}else{ // IF 1, LED WILL BE ON
 					lgc->lit[i] = true;
 					lgc->count++;
 				}
 
-				HAL_GPIO_WritePin(GPIOB,led->pin[i],lgc->lit[i]);
+				HAL_GPIO_WritePin(GPIOB,led->pin[i],lgc->lit[i]); // TURN ON LED BASED ON THE ARRAY OF BOOLS
 			}
 
-			lgc->state = 1;
-			lgc->interval = onTime; //SAME AS COMMENT ABOVE
+			lgc->state = 1; // MAKE STATE OF ROUND 1 (IN ACTION)
+			lgc->interval = onTime; //DEFINE INTERVAL BASED ON THE ONTIME FROM POTIENTIOMETER
 
 		}
 	}
@@ -421,18 +421,18 @@ void gameLogic(struct buttons *btn,struct GAMELOGIC *lgc,struct LED *led,uint32_
 
 GPIO_PinState debounce(struct buttons *btn){
 
-	GPIO_PinState reading = HAL_GPIO_ReadPin(btn->port, btn->pin);
+	GPIO_PinState reading = HAL_GPIO_ReadPin(btn->port, btn->pin); // READ THE CURRENT BUTTON
 
-		if(reading != btn->currentState){
-			btn->prevDebounceTime_ms = HAL_GetTick();
-			btn->currentState = reading;
+		if(reading != btn->currentState){ // IF THE PINSTATE OF READING IS NOT EQUAL TO THE CURRENT STATE
+			btn->prevDebounceTime_ms = HAL_GetTick(); // CAPTURE THE EXACT TIMESTAMP IN MS
+			btn->currentState = reading; // RE-VALUE CURRENTSTATE BASED ON THE CURRENT READING OF PIN STATE RIGHT NOW
 		}
 
-		if(HAL_GetTick() - btn->prevDebounceTime_ms > 50){
-			btn->stableState = btn->currentState;
+		if(HAL_GetTick() - btn->prevDebounceTime_ms > 50){ //IF THE DIFFERENCE BETWEEN ELAPSED TIME AND DEFINED DEBOUNCETIME SURPASSED 50MS
+			btn->stableState = btn->currentState; // RE-VALUE THE RAW STATE BASED ON THE CURRENT STATE
 		}
 
-		return btn->stableState;
+		return btn->stableState; // RETURN THE STABLE STATE
 }
 
 bool checkButton(struct buttons *btn){
@@ -440,10 +440,11 @@ bool checkButton(struct buttons *btn){
 	GPIO_PinState before = btn->stableState;
 		GPIO_PinState after = debounce(btn);
 
-		return (before == GPIO_PIN_RESET && after == GPIO_PIN_SET);
+		return (before == GPIO_PIN_RESET && after == GPIO_PIN_SET); // RETURN IF THE PREVIOUS READING WAS LOW AND THE CURRENT/AFTER WAS A HIGH
+		// BASICALLY RETURN WHEN A FALLING EDGE IS DETECTED
 }
 
-uint16_t readPot(void){
+uint16_t readPot(void){ // READ POTIENTIOMETER
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	uint16_t value = HAL_ADC_GetValue(&hadc1);   // 0 to 4095
@@ -452,7 +453,7 @@ uint16_t readPot(void){
 }
 
 uint32_t scaleTime(uint16_t pot, uint32_t easyMs, uint32_t hardMs){
-	return easyMs - ((easyMs - hardMs) * pot) / 4095;
+	return easyMs - ((easyMs - hardMs) * pot) / 4095; // DEFINE THE INTERVAL
 }
 
 void winAnim(struct LED *led){
@@ -529,7 +530,7 @@ bool resetGame(struct buttons *btn){
 	GPIO_PinState a = debounce(&btn[0]);
 	GPIO_PinState b = debounce(&btn[2]);
 
-		return (a == GPIO_PIN_SET && b == GPIO_PIN_SET);
+		return (a == GPIO_PIN_SET && b == GPIO_PIN_SET); // RETURN IF BOTH BUTTONS HAVE BEEN PRESSED
 }
 
 unsigned RNG(void){
@@ -538,7 +539,7 @@ unsigned RNG(void){
 
 	 bit  = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5) ) & 1;
 	 return lfsr =  (lfsr >> 1) | (bit << 15);
-
+// LINEAR FEEDBACK SHIFT REGISTER BASED RNG FUNCTION -- TAKEN FROM STACK OVERFLOW SINCE I WAS TOO LAZY TO CONFIGURE STM TO GET THE RNG
 }
 
 void RESET_L(struct GAMELOGIC *lgc,struct buttons *btn,struct LED *led){
@@ -562,7 +563,7 @@ void defineButton(struct buttons *button,GPIO_TypeDef *port,uint16_t pin){
 		button->pin = pin;
 		button->prevDebounceTime_ms = 0;
 		button->currentState = GPIO_PIN_RESET;   // pull-down
-		button->stableState = GPIO_PIN_RESET;
+		button->stableState = GPIO_PIN_RESET;	// pull-down
 
 }
 
@@ -581,7 +582,8 @@ void defineLED(struct LED *led){
 }
 
 void defineLOGIC(struct GAMELOGIC *lgc){
-	lgc->interval = 2000;
+	// INITIALIZE AS 0
+	lgc->interval = 2000; // INTERVAL -- CAN BE ANYTHING
 	lgc->prevTimeStamp_ms = 0;
 	lgc->state = 0;
 	lgc->pressed = false;
